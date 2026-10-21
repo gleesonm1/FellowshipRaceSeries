@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 import html
+import base64
 from datetime import datetime, timezone
 
 # Import your event configs and UI helper
@@ -14,20 +15,24 @@ st.set_page_config(page_title="Fellowship Race Series", layout="wide")
 # --- 0b. MOUNTAIN BANNER ---
 # Ridgelines drawn back-to-front; each is filled black so nearer ridges hide the ones behind
 ridges = [
-    ("0,120 60,95 110,110 170,70 230,100 290,55 340,85 400,40 460,90 520,65 580,100 640,50 700,80 760,35 820,75 880,60 940,95 1000,45 1060,80 1120,60 1200,90", 0.35),
-    ("0,150 80,120 140,135 210,95 270,130 330,105 390,140 450,100 510,125 570,85 630,130 700,110 760,140 830,95 890,120 950,100 1010,135 1080,105 1140,125 1200,110", 0.6),
+    ("0,120 60,95 110,110 170,70 230,100 290,55 340,85 400,40 460,90 520,65 580,100 640,50 700,80 760,35 820,75 880,60 940,95 1000,45 1060,80 1120,60 1200,90", 0.5),
+    ("0,150 80,120 140,135 210,95 270,130 330,105 390,140 450,100 510,125 570,85 630,130 700,110 760,140 830,95 890,120 950,100 1010,135 1080,105 1140,125 1200,110", 0.75),
     ("0,185 90,165 160,175 240,145 310,170 380,155 460,180 540,150 620,172 700,140 780,168 860,150 940,178 1020,155 1100,172 1200,160", 1.0),
 ]
 ridge_paths = "".join(
     f'<path d="M{pts.replace(" ", " L")} L1200,200 L0,200 Z" fill="#000" '
-    f'stroke="rgba(255,255,255,{op})" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'
+    f'stroke="rgba(255,255,255,{op})" stroke-width="2" vector-effect="non-scaling-stroke"/>'
     for pts, op in ridges
 )
+# st.html strips inline <svg>, so embed it as a base64 background image instead
+ridge_svg = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 200" preserveAspectRatio="none">'
+    f'{ridge_paths}</svg>'
+)
+ridge_b64 = base64.b64encode(ridge_svg.encode()).decode()
 st.html(f"""
-<div style="position: relative; width: 100%; height: 170px; background: #000; overflow: hidden; border-bottom: 1px solid #333;">
-    <svg viewBox="0 0 1200 200" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%;">
-        {ridge_paths}
-    </svg>
+<div style="position: relative; width: 100%; height: 170px; overflow: hidden; border-bottom: 1px solid #333;
+            background: #000 url('data:image/svg+xml;base64,{ridge_b64}') no-repeat; background-size: 100% 100%;">
     <div style="position: absolute; left: 24px; top: 18px; color: #FFF; font-size: 2em; font-weight: 700; letter-spacing: 0.04em;">
         Fellowship Race Series
     </div>
