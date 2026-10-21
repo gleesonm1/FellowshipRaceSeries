@@ -30,12 +30,24 @@ ridge_svg = (
     f'{ridge_paths}</svg>'
 )
 ridge_b64 = base64.b64encode(ridge_svg.encode()).decode()
+
+# Logo is white on solid black: the radial fade hides the ridges behind it, and the
+# screen blend makes the logo's black rectangle see-through so there are no hard edges
+logo_path = "FellowshipChampionships/fitness_fellowship_logo_black.png"
+logo_html = ""
+if os.path.exists(logo_path):
+    with open(logo_path, "rb") as f:
+        logo_b64 = base64.b64encode(f.read()).decode()
+    logo_html = f"""
+    <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;
+                background: radial-gradient(ellipse 300px 130px at center, #000 55%, transparent 100%);">
+        <img src="data:image/png;base64,{logo_b64}" style="height: 175px; max-width: 90%; object-fit: contain; mix-blend-mode: screen;">
+    </div>"""
+
 st.html(f"""
-<div style="position: relative; width: 100%; height: 170px; overflow: hidden; border-bottom: 1px solid #333;
+<div style="position: relative; width: 100%; height: 190px; overflow: hidden; border-bottom: 1px solid #333;
             background: #000 url('data:image/svg+xml;base64,{ridge_b64}') no-repeat; background-size: 100% 100%;">
-    <div style="position: absolute; left: 24px; top: 18px; color: #FFF; font-size: 2em; font-weight: 700; letter-spacing: 0.04em;">
-        Fellowship Race Series
-    </div>
+    {logo_html}
 </div>
 """)
 
