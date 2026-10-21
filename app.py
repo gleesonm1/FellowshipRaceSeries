@@ -201,7 +201,7 @@ if all_sheets is None:
 # Poster sits beside the rules/results on wide screens; Streamlit stacks columns on narrow screens
 poster = config.get("poster")
 if poster and os.path.exists(poster):
-    poster_col, main_col = st.columns([2, 3], gap="large")
+    poster_col, main_col = st.columns([2, 4], gap="large")
     with poster_col:
         st.image(poster, width="stretch")
 else:
