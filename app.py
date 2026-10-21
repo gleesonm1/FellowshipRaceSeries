@@ -197,248 +197,259 @@ if all_sheets is None:
     st.error(f"File not found: {config['file']}")
     st.stop()
 
-# --- RENDER EVENT RULES / IMAGE ---
-render_event_info(selected_event)
+# --- POSTER LAYOUT ---
+# Poster sits beside the rules/results on wide screens; Streamlit stacks columns on narrow screens
+poster = config.get("poster")
+if poster and os.path.exists(poster):
+    poster_col, main_col = st.columns([2, 3], gap="large")
+    with poster_col:
+        st.image(poster, width="stretch")
+else:
+    main_col = st.container()
+
+with main_col:
+    # --- RENDER EVENT RULES ---
+    render_event_info(selected_event)
 
 
-# -----------------------------------
+    # -----------------------------------
 
-# Handle Sheet selection via URL
-sheet_names = list(all_sheets.keys())
-url_sheet = st.query_params.get("sheet", config["default_sheet"])
-sheet_idx = sheet_names.index(url_sheet) if url_sheet in sheet_names else 0
+    # Handle Sheet selection via URL
+    sheet_names = list(all_sheets.keys())
+    url_sheet = st.query_params.get("sheet", config["default_sheet"])
+    sheet_idx = sheet_names.index(url_sheet) if url_sheet in sheet_names else 0
 
-selected_sheet = st.selectbox("Select Leaderboard View", options=sheet_names, index=sheet_idx)
-st.query_params["sheet"] = selected_sheet
+    selected_sheet = st.selectbox("Select Leaderboard View", options=sheet_names, index=sheet_idx)
+    st.query_params["sheet"] = selected_sheet
 
-# --- 4. DATA PROCESSING ---
-df = all_sheets[selected_sheet]
-if selected_sheet != "Team GC":
-    df = clean_data(df)
+    # --- 4. DATA PROCESSING ---
+    df = all_sheets[selected_sheet]
+    if selected_sheet != "Team GC":
+        df = clean_data(df)
 
-# 1. Create a temporary numeric time column for accurate sorting
-if selected_sheet != "e_gap":
-    if 'total_time' in df.columns:
+    # 1. Create a temporary numeric time column for accurate sorting
+    if selected_sheet != "e_gap":
+        if 'total_time' in df.columns:
+            # If a time is only "MM:SS.ms" (1 colon), prepend "00:" so pandas reads it as "HH:MM:SS.ms"
+            time_str = df['total_time'].astype(str).apply(
+                    lambda x: '00:' + x if x.count(':') == 1 
+                    else ('00:00:' + x if x.count(':') == 0 
+                    else x)
+                )
+            df['temp_sort_time'] = pd.to_timedelta(time_str, errors='coerce')
+    elif selected_sheet == "e_gap":
+        if 'e_gap' in df.columns:
+            # Check if already float/int (seconds) or string time
+            if pd.api.types.is_numeric_dtype(df['e_gap']):
+                df['e_gap'] = pd.to_timedelta(df['e_gap'], unit='s')
+            else:
+                time_str = df['e_gap'].astype(str).apply(
+                    lambda x: '00:' + x if x.count(':') == 1 
+                    else ('00:00:' + x if x.count(':') == 0 
+                    else x)
+                )
+                df['e_gap'] = pd.to_timedelta(time_str, errors='coerce')
+
+    if "Round" in selected_sheet:
         # If a time is only "MM:SS.ms" (1 colon), prepend "00:" so pandas reads it as "HH:MM:SS.ms"
-        time_str = df['total_time'].astype(str).apply(
+        time_str = df['time'+selected_sheet[-1]].astype(str).apply(
                 lambda x: '00:' + x if x.count(':') == 1 
                 else ('00:00:' + x if x.count(':') == 0 
                 else x)
             )
         df['temp_sort_time'] = pd.to_timedelta(time_str, errors='coerce')
-elif selected_sheet == "e_gap":
-    if 'e_gap' in df.columns:
-        # Check if already float/int (seconds) or string time
-        if pd.api.types.is_numeric_dtype(df['e_gap']):
-            df['e_gap'] = pd.to_timedelta(df['e_gap'], unit='s')
+
+    # Apply Sorting from Config
+    sort_cols, sort_orders = config["sorting"](selected_sheet)
+
+    # 2. If 'total_time' is in the sorting logic, swap it for our temporary time column
+    if 'total_time' in sort_cols and 'temp_sort_time' in df.columns:
+        sort_cols = ['temp_sort_time' if c == 'total_time' else c for c in sort_cols]
+    elif 'Round' in selected_sheet and 'temp_sort_time' in df.columns:
+        sort_cols = ['temp_sort_time' if 'time' in c else c for c in sort_cols]
+
+    # 3. Sort and reset index
+    df = df.sort_values(by=sort_cols, ascending=sort_orders).reset_index(drop=True)
+
+    # --- 5. UI & FILTERING ---
+    st.title(f"🏆 {selected_event}: {selected_sheet}")
+    m1, m2, m3, m4 = st.columns(4)
+    st.divider()
+
+    # Check which columns exist to build our filters
+    has_pen = 'pen' in df.columns
+    has_category = 'category' in df.columns
+    has_age = 'age' in df.columns
+    has_velo = 'velocategory' in df.columns
+
+    if has_pen or has_category or has_age or has_velo:
+        # Create two side-by-side columns for the filters
+        if not has_velo:
+            filter_col1, filter_col2, filter_col3 = st.columns(3)
         else:
-            time_str = df['e_gap'].astype(str).apply(
-                lambda x: '00:' + x if x.count(':') == 1 
-                else ('00:00:' + x if x.count(':') == 0 
-                else x)
-            )
-            df['e_gap'] = pd.to_timedelta(time_str, errors='coerce')
+            filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
+    
+        # Initialize defaults
+        selected_pen = 'All'
+        selected_cat = 'All'
+        selected_age = 'All'
+        selected_velo = 'All'
+    
+        if has_pen:
+            with filter_col1:
+                pen_options = ['All'] + sorted(df['pen'].dropna().unique().tolist())
+                selected_pen = st.selectbox("Filter by pen", options=pen_options, index=0)
 
-if "Round" in selected_sheet:
-    # If a time is only "MM:SS.ms" (1 colon), prepend "00:" so pandas reads it as "HH:MM:SS.ms"
-    time_str = df['time'+selected_sheet[-1]].astype(str).apply(
-            lambda x: '00:' + x if x.count(':') == 1 
-            else ('00:00:' + x if x.count(':') == 0 
-            else x)
-        )
-    df['temp_sort_time'] = pd.to_timedelta(time_str, errors='coerce')
+        if selected_sheet == "GC":       
+            if has_category:
+                if selected_sheet != "KQOM" and selected_sheet != "Sprints":
+                    with filter_col2:
+                        cat_options = ['All'] + sorted(df['category'].dropna().unique().tolist())
+                        selected_cat = st.selectbox("Filter by category", options=cat_options, index=0)
+        
+            if has_age:
+                if selected_sheet != "KQOM" and selected_sheet != "Sprints":
+                    with filter_col3:
+                        age_options = ['All'] + sorted(df['age'].dropna().unique().tolist())
+                        selected_age = st.selectbox("Filter by age group", options=age_options, index=0)
 
-# Apply Sorting from Config
-sort_cols, sort_orders = config["sorting"](selected_sheet)
+            if has_velo:
+                if selected_sheet != "KQOM" and selected_sheet != "Sprints":
+                    with filter_col3:
+                        velo_options = ['All'] + sorted(df['velocategory'].dropna().unique().tolist())
+                        selected_velo = st.selectbox("Filter by vELO category", options=velo_options, index=0)
 
-# 2. If 'total_time' is in the sorting logic, swap it for our temporary time column
-if 'total_time' in sort_cols and 'temp_sort_time' in df.columns:
-    sort_cols = ['temp_sort_time' if c == 'total_time' else c for c in sort_cols]
-elif 'Round' in selected_sheet and 'temp_sort_time' in df.columns:
-    sort_cols = ['temp_sort_time' if 'time' in c else c for c in sort_cols]
+        # Apply the filters to a copy of the dataframe
+        filtered_df = df.copy()
+    
+        if selected_pen != 'All':
+            filtered_df = filtered_df[filtered_df['pen'] == selected_pen]
+        
+        if selected_cat != 'All':
+            filtered_df = filtered_df[filtered_df['category'] == selected_cat]
+    
+        if selected_age != 'All':
+            filtered_df = filtered_df[filtered_df['age'] == selected_age]
 
-# 3. Sort and reset index
-df = df.sort_values(by=sort_cols, ascending=sort_orders).reset_index(drop=True)
-
-# --- 5. UI & FILTERING ---
-st.title(f"🏆 {selected_event}: {selected_sheet}")
-m1, m2, m3, m4 = st.columns(4)
-st.divider()
-
-# Check which columns exist to build our filters
-has_pen = 'pen' in df.columns
-has_category = 'category' in df.columns
-has_age = 'age' in df.columns
-has_velo = 'velocategory' in df.columns
-
-if has_pen or has_category or has_age or has_velo:
-    # Create two side-by-side columns for the filters
-    if not has_velo:
-        filter_col1, filter_col2, filter_col3 = st.columns(3)
+        if selected_velo != 'All':
+            filtered_df = filtered_df[filtered_df['velocategory'] == selected_velo]
+        
+        # Re-sort strictly by time if 'All' is selected for either filter
+        # if selected_pen == 'All' or selected_cat == 'All':
+        if 'temp_sort_time' in filtered_df.columns:
+            if selected_sheet == "GC":
+                filtered_df = filtered_df.sort_values(by=['races','temp_sort_time'], ascending=[False,True])
+            if selected_sheet == "Team GC":
+                filtered_df = filtered_df.sort_values(by=['racers','temp_sort_time'], ascending=[False,True])
+            if 'Round' in selected_sheet:
+                filtered_df = filtered_df.sort_values(by=['temp_sort_time'], ascending=[True])
+        elif 'total_time' in filtered_df.columns:
+            if selected_sheet == "GC":
+                filtered_df = filtered_df.sort_values(by=['races','total_time'], ascending=[False,True])
+            elif selected_sheet == "Team GC":
+                filtered_df = filtered_df.sort_values(by=['racers','total_time'], ascending=[False,True])
+        elif 'e_gap' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values(by=['e_gap', 'total_time'], ascending=[True,True])
+            
+        filtered_df = filtered_df.reset_index(drop=True)
     else:
-        filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
-    
-    # Initialize defaults
-    selected_pen = 'All'
-    selected_cat = 'All'
-    selected_age = 'All'
-    selected_velo = 'All'
-    
-    if has_pen:
-        with filter_col1:
-            pen_options = ['All'] + sorted(df['pen'].dropna().unique().tolist())
-            selected_pen = st.selectbox("Filter by pen", options=pen_options, index=0)
+        filtered_df = df.copy()
 
-    if selected_sheet == "GC":       
-        if has_category:
-            if selected_sheet != "KQOM" and selected_sheet != "Sprints":
-                with filter_col2:
-                    cat_options = ['All'] + sorted(df['category'].dropna().unique().tolist())
-                    selected_cat = st.selectbox("Filter by category", options=cat_options, index=0)
+    if 'temp_sort_time' in filtered_df.columns and not filtered_df.empty:
+        # Find the max races and create a mask for those riders
+        if "Round" not in selected_sheet:
+            if 'races' in filtered_df.columns:
+                max_races = filtered_df['races'].max()
+                mask = filtered_df['races'] == max_races
+            elif 'racers' in filtered_df.columns:
+                max_races = filtered_df['racers'].max()
+                mask = filtered_df['racers'] == max_races
         
-        if has_age:
-            if selected_sheet != "KQOM" and selected_sheet != "Sprints":
-                with filter_col3:
-                    age_options = ['All'] + sorted(df['age'].dropna().unique().tolist())
-                    selected_age = st.selectbox("Filter by age group", options=age_options, index=0)
-
-        if has_velo:
-            if selected_sheet != "KQOM" and selected_sheet != "Sprints":
-                with filter_col3:
-                    velo_options = ['All'] + sorted(df['velocategory'].dropna().unique().tolist())
-                    selected_velo = st.selectbox("Filter by vELO category", options=velo_options, index=0)
-
-    # Apply the filters to a copy of the dataframe
-    filtered_df = df.copy()
-    
-    if selected_pen != 'All':
-        filtered_df = filtered_df[filtered_df['pen'] == selected_pen]
+            # Calculate the raw gap using the Timedelta column 
+            # (Index 0 is guaranteed to be the fastest since we just sorted it)
+            fastest_time = filtered_df.loc[0, 'temp_sort_time']
+            raw_gaps = filtered_df.loc[mask, 'temp_sort_time'] - fastest_time
         
-    if selected_cat != 'All':
-        filtered_df = filtered_df[filtered_df['category'] == selected_cat]
-    
-    if selected_age != 'All':
-        filtered_df = filtered_df[filtered_df['age'] == selected_age]
-
-    if selected_velo != 'All':
-        filtered_df = filtered_df[filtered_df['velocategory'] == selected_velo]
-        
-    # Re-sort strictly by time if 'All' is selected for either filter
-    # if selected_pen == 'All' or selected_cat == 'All':
-    if 'temp_sort_time' in filtered_df.columns:
-        if selected_sheet == "GC":
-            filtered_df = filtered_df.sort_values(by=['races','temp_sort_time'], ascending=[False,True])
-        if selected_sheet == "Team GC":
-            filtered_df = filtered_df.sort_values(by=['racers','temp_sort_time'], ascending=[False,True])
-        if 'Round' in selected_sheet:
-            filtered_df = filtered_df.sort_values(by=['temp_sort_time'], ascending=[True])
-    elif 'total_time' in filtered_df.columns:
-        if selected_sheet == "GC":
-            filtered_df = filtered_df.sort_values(by=['races','total_time'], ascending=[False,True])
-        elif selected_sheet == "Team GC":
-            filtered_df = filtered_df.sort_values(by=['racers','total_time'], ascending=[False,True])
-    elif 'e_gap' in filtered_df.columns:
-        filtered_df = filtered_df.sort_values(by=['e_gap', 'total_time'], ascending=[True,True])
+            # Helper function to convert Timedelta back to "+HH:MM:SS.ms" or "+MM:SS.ms"
+            def format_gap(td):
+                if pd.isna(td) or td.total_seconds() == 0:
+                    return "00.000" # Leader / No gap
             
-    filtered_df = filtered_df.reset_index(drop=True)
-else:
-    filtered_df = df.copy()
-
-if 'temp_sort_time' in filtered_df.columns and not filtered_df.empty:
-    # Find the max races and create a mask for those riders
-    if "Round" not in selected_sheet:
-        if 'races' in filtered_df.columns:
-            max_races = filtered_df['races'].max()
-            mask = filtered_df['races'] == max_races
-        elif 'racers' in filtered_df.columns:
-            max_races = filtered_df['racers'].max()
-            mask = filtered_df['racers'] == max_races
-        
-        # Calculate the raw gap using the Timedelta column 
-        # (Index 0 is guaranteed to be the fastest since we just sorted it)
-        fastest_time = filtered_df.loc[0, 'temp_sort_time']
-        raw_gaps = filtered_df.loc[mask, 'temp_sort_time'] - fastest_time
-        
-        # Helper function to convert Timedelta back to "+HH:MM:SS.ms" or "+MM:SS.ms"
-        def format_gap(td):
-            if pd.isna(td) or td.total_seconds() == 0:
-                return "00.000" # Leader / No gap
+                total_sec = td.total_seconds()
+                h = int(total_sec // 3600)
+                m = int((total_sec % 3600) // 60)
+                s = total_sec % 60
             
-            total_sec = td.total_seconds()
-            h = int(total_sec // 3600)
-            m = int((total_sec % 3600) // 60)
-            s = total_sec % 60
-            
-            if h > 0:
-                return f"+{h:02d}:{m:02d}:{s:06.3f}"
-            else:
-                return f"+{m:02d}:{s:06.3f}"
+                if h > 0:
+                    return f"+{h:02d}:{m:02d}:{s:06.3f}"
+                else:
+                    return f"+{m:02d}:{s:06.3f}"
                 
-        # Apply the formatted string back to your gap column
-        filtered_df["time_offset"] = ""
-        filtered_df.loc[mask, 'time_offset'] = raw_gaps.apply(format_gap)
+            # Apply the formatted string back to your gap column
+            filtered_df["time_offset"] = ""
+            filtered_df.loc[mask, 'time_offset'] = raw_gaps.apply(format_gap)
 
-# 4. Clean up by dropping the temporary column so it doesn't show in the UI
-if 'temp_sort_time' in df.columns:
-    df = df.drop(columns=['temp_sort_time'])
-if 'temp_sort_time' in filtered_df.columns:
-    filtered_df = filtered_df.drop(columns=['temp_sort_time'])
+    # 4. Clean up by dropping the temporary column so it doesn't show in the UI
+    if 'temp_sort_time' in df.columns:
+        df = df.drop(columns=['temp_sort_time'])
+    if 'temp_sort_time' in filtered_df.columns:
+        filtered_df = filtered_df.drop(columns=['temp_sort_time'])
 
-# Metric Logic
-if not filtered_df.empty:
-    m1.metric("Total Participants", len(df))
-    if 'pen' in filtered_df.columns:
-        m2.metric("Filtered Count", len(filtered_df))
-    if selected_event == "Spring Classics" or selected_event == "Total Non-Stop Power (iTT)":
-        if 'avg_power' in filtered_df.columns:
-            m3.metric("Highest Power", str(
-                      np.round(filtered_df['avg_power'].loc[filtered_df['avg_power'] == filtered_df['avg_power'].max()].iloc[0])) + "W",
-                      filtered_df['name'].loc[filtered_df['avg_power'] == filtered_df['avg_power'].max()].iloc[0])
-        if 'avg_wkg' in filtered_df.columns:
-            m4.metric("Highest W/kg", str(
-                      np.round(filtered_df['avg_wkg'].loc[filtered_df['avg_wkg'] == filtered_df['avg_wkg'].max()].iloc[0],3)) + "W/kg",
-                      filtered_df['name'].loc[filtered_df['avg_wkg'] == filtered_df['avg_wkg'].max()].iloc[0])
-    else:
-        if 'name' in filtered_df.columns:
-            m3.metric("Current Leader", filtered_df['name'].iloc[0])
-        if 'total_points' in filtered_df.columns:
-            m4.metric("Top Points", f"{filtered_df['total_points'].max()} pts")
-        elif 'final_points' in filtered_df.columns:
-            m4.metric("Top Points", f"{filtered_df['final_points'].max()} pts")
-        elif 'W/kg' in filtered_df.columns:
-            m4.metric("Highest W/kg", str(
-                      np.round(filtered_df['W/kg'].loc[filtered_df['W/kg'] == filtered_df['W/kg'].max()].iloc[0],3)) + " W/kg",
-                      filtered_df['name'].loc[filtered_df['W/kg'] == filtered_df['W/kg'].max()].iloc[0])
+    # Metric Logic
+    if not filtered_df.empty:
+        m1.metric("Total Participants", len(df))
+        if 'pen' in filtered_df.columns:
+            m2.metric("Filtered Count", len(filtered_df))
+        if selected_event == "Spring Classics" or selected_event == "Total Non-Stop Power (iTT)":
+            if 'avg_power' in filtered_df.columns:
+                m3.metric("Highest Power", str(
+                          np.round(filtered_df['avg_power'].loc[filtered_df['avg_power'] == filtered_df['avg_power'].max()].iloc[0])) + "W",
+                          filtered_df['name'].loc[filtered_df['avg_power'] == filtered_df['avg_power'].max()].iloc[0])
+            if 'avg_wkg' in filtered_df.columns:
+                m4.metric("Highest W/kg", str(
+                          np.round(filtered_df['avg_wkg'].loc[filtered_df['avg_wkg'] == filtered_df['avg_wkg'].max()].iloc[0],3)) + "W/kg",
+                          filtered_df['name'].loc[filtered_df['avg_wkg'] == filtered_df['avg_wkg'].max()].iloc[0])
+        else:
+            if 'name' in filtered_df.columns:
+                m3.metric("Current Leader", filtered_df['name'].iloc[0])
+            if 'total_points' in filtered_df.columns:
+                m4.metric("Top Points", f"{filtered_df['total_points'].max()} pts")
+            elif 'final_points' in filtered_df.columns:
+                m4.metric("Top Points", f"{filtered_df['final_points'].max()} pts")
+            elif 'W/kg' in filtered_df.columns:
+                m4.metric("Highest W/kg", str(
+                          np.round(filtered_df['W/kg'].loc[filtered_df['W/kg'] == filtered_df['W/kg'].max()].iloc[0],3)) + " W/kg",
+                          filtered_df['name'].loc[filtered_df['W/kg'] == filtered_df['W/kg'].max()].iloc[0])
 
-render_podium(filtered_df)
+    render_podium(filtered_df)
 
-# --- 6. STYLING & DISPLAY ---
-def highlight_podium(row):
-    colors = {1: 'background-color: #D4AF37; color: black; font-weight: bold', 
-              2: 'background-color: #C0C0C0; color: black', 
-              3: 'background-color: #CD7F32; color: black'}
-    return [colors.get(row.name, '')] * len(row)
+    # --- 6. STYLING & DISPLAY ---
+    def highlight_podium(row):
+        colors = {1: 'background-color: #D4AF37; color: black; font-weight: bold', 
+                  2: 'background-color: #C0C0C0; color: black', 
+                  3: 'background-color: #CD7F32; color: black'}
+        return [colors.get(row.name, '')] * len(row)
 
-# Standardize column configs for the dataframe
-column_main_config = {
-    "name": "Rider",
-    "team_name": "Team",
-    "total_points": st.column_config.NumberColumn("Points", format="%d ⭐"),
-    "final_points": st.column_config.NumberColumn("Points", format="%d ⭐"),
-    "total_time": "Time",
-    "time_offset": "Gap",
-}
+    # Standardize column configs for the dataframe
+    column_main_config = {
+        "name": "Rider",
+        "team_name": "Team",
+        "total_points": st.column_config.NumberColumn("Points", format="%d ⭐"),
+        "final_points": st.column_config.NumberColumn("Points", format="%d ⭐"),
+        "total_time": "Time",
+        "time_offset": "Gap",
+    }
 
-if 'e_gap' in filtered_df.columns and pd.api.types.is_timedelta64_dtype(filtered_df['e_gap']):
-    filtered_df['e_gap'] = filtered_df['e_gap'].apply(format_egap)
+    if 'e_gap' in filtered_df.columns and pd.api.types.is_timedelta64_dtype(filtered_df['e_gap']):
+        filtered_df['e_gap'] = filtered_df['e_gap'].apply(format_egap)
 
-filtered_df.index = range(1, len(filtered_df) + 1)
+    filtered_df.index = range(1, len(filtered_df) + 1)
 
-st.dataframe(
-    filtered_df.style.apply(highlight_podium, axis=1),
-    use_container_width=True,
-    hide_index=False,
-    column_config=column_main_config
-)
+    st.dataframe(
+        filtered_df.style.apply(highlight_podium, axis=1),
+        use_container_width=True,
+        hide_index=False,
+        column_config=column_main_config
+    )
 
-st.caption(f"Showing results for {selected_event} | {selected_sheet}")
+    st.caption(f"Showing results for {selected_event} | {selected_sheet}")
