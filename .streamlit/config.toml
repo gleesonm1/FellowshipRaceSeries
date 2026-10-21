@@ -1,8 +1,9 @@
 [theme]
 primaryColor = "#D4AF37"          # The Gold from your podium
-backgroundColor = "#FFFFFF"       # Solid White background
-secondaryBackgroundColor = "#F0F2F6" # Light grey for sidebars/widgets
-textColor = "#262730"             # Dark grey for readability
+base = "dark"
+backgroundColor = "#000000"       # Solid black background
+secondaryBackgroundColor = "#1A1A1A" # Dark grey for sidebars/widgets
+textColor = "#E0E0E0"             # Light grey for readability
 font = "sans serif"
 
 [server]
