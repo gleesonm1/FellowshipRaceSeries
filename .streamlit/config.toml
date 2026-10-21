@@ -1,0 +1,12 @@
+[theme]
+primaryColor = "#D4AF37"          # The Gold from your podium
+backgroundColor = "#FFFFFF"       # Solid White background
+secondaryBackgroundColor = "#F0F2F6" # Light grey for sidebars/widgets
+textColor = "#262730"             # Dark grey for readability
+font = "sans serif"
+
+[server]
+# This helps with app stability when deploying
+headless = true
+enableCORS = false
+enableXsrfProtection = false
