@@ -22,7 +22,7 @@ def render_event_info(selected_event):
         st.markdown("## Fellowship Championships")
 
         # Display image if present
-        hero_image = "FellowshipChampionships/ChampDetails.png"
+        hero_image = "FellowshipChampionships/ChampDetails.jpg"
         if os.path.exists(hero_image):
             st.image(hero_image, width=600)
 
