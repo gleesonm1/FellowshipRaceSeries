@@ -6,7 +6,7 @@ EVENT_CONFIG = {
     "Fellowship Championships": {
         "file": "FellowshipChampionships/FellowshipChampionships.xlsx",
         "default_sheet": "e_gap",
-        "poster": "FellowshipChampionships/ChampDetails.jpg",
+        # "poster": "FellowshipChampionships/ChampDetails.jpg",
         "sorting": lambda sheet:
             (['races', 'total_time'], [True, True]) if sheet == "GC" else
             (['racers', 'total_time'], [False, True]) if sheet == "Team GC" else
