@@ -292,11 +292,11 @@ with main_col:
     has_pen = 'pen' in df.columns
     has_category = 'category' in df.columns
     has_age = 'age' in df.columns
-    has_velo = 'velocategory' in df.columns
+    has_gender = 'gender' in df.columns
 
-    if has_pen or has_category or has_age or has_velo:
+    if has_pen or has_category or has_age or has_gender:
         # Create two side-by-side columns for the filters
-        if not has_velo:
+        if not has_gender:
             filter_col1, filter_col2, filter_col3 = st.columns(3)
         else:
             filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
@@ -305,12 +305,18 @@ with main_col:
         selected_pen = 'All'
         selected_cat = 'All'
         selected_age = 'All'
-        selected_velo = 'All'
+        selected_gender = 'All'
     
         if has_pen:
             with filter_col1:
                 pen_options = ['All'] + sorted(df['pen'].dropna().unique().tolist())
                 selected_pen = st.selectbox("Filter by pen", options=pen_options, index=0)
+
+        if selected_sheet == "GC" or selected_sheet == "e_gap":
+            if has_gender:
+                with filter_col4:
+                    gender_options = ['All'] + sorted(df['gender'].dropna().unique().tolist())
+                    selected_gender = st.selectbox("Filter by gender", options=gender_options, index=0)
 
         if selected_sheet == "GC":       
             if has_category:
@@ -325,11 +331,11 @@ with main_col:
                         age_options = ['All'] + sorted(df['age'].dropna().unique().tolist())
                         selected_age = st.selectbox("Filter by age group", options=age_options, index=0)
 
-            if has_velo:
-                if selected_sheet != "KQOM" and selected_sheet != "Sprints":
-                    with filter_col3:
-                        velo_options = ['All'] + sorted(df['velocategory'].dropna().unique().tolist())
-                        selected_velo = st.selectbox("Filter by vELO category", options=velo_options, index=0)
+            # if has_velo:
+            #     if selected_sheet != "KQOM" and selected_sheet != "Sprints":
+            #         with filter_col3:
+            #             velo_options = ['All'] + sorted(df['velocategory'].dropna().unique().tolist())
+            #             selected_velo = st.selectbox("Filter by vELO category", options=velo_options, index=0)
 
         # Apply the filters to a copy of the dataframe
         filtered_df = df.copy()
@@ -343,8 +349,8 @@ with main_col:
         if selected_age != 'All':
             filtered_df = filtered_df[filtered_df['age'] == selected_age]
 
-        if selected_velo != 'All':
-            filtered_df = filtered_df[filtered_df['velocategory'] == selected_velo]
+        if selected_gender != 'All':
+            filtered_df = filtered_df[filtered_df['gender'] == selected_gender]
         
         # Re-sort strictly by time if 'All' is selected for either filter
         # if selected_pen == 'All' or selected_cat == 'All':

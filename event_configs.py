@@ -11,7 +11,7 @@ EVENT_CONFIG = {
             (['races', 'total_time'], [True, True]) if sheet == "GC" else
             (['racers', 'total_time'], [False, True]) if sheet == "Team GC" else
             (['pen', f"time{sheet[-1]}"], [True, True]) if "Round" in sheet else
-            (['pen', 'e_gap', 'total_time'], [True, True,True]) if sheet == "e_gap" else
+            (['e_gap', 'total_time'], [True,True]) if sheet == "e_gap" else
             (['pen', 'Total Points'], [True, False])
     }
 }
@@ -38,11 +38,11 @@ The series mixes a TT, a mass-start "Epic" race and three races with staggered s
 #### Category classifications
 Each category has its own champion: the rider with the lowest total eGap in that category. For these classifications, every rider is placed in the highest category they completed a race in.
 
-If you move up a category, your eGap for every race you have already completed is recalculated as as 30 seconds per race. The exception is the Epic race and TT where a direct eGap to the category above is simple to calculate. Your results will also be removed from the lower category's results, so the eGaps of the riders you raced against are recalculated too.
+If you move up a category, your eGap for every race you have already completed is recalculated as 120 seconds per race. The exception is the Epic race and TT where a direct eGap to the category above is simple to calculate. Your results will also be removed from the lower category's results, so the eGaps of the riders you raced against are recalculated too.
 
 For example, in race 1 Rider A wins Cat D (eGap 0s) and is promoted and Rider B is second (eGap 10s) but not promoted. Rider A then races race 2 in Cat C:
 
-- Rider A's race 1 eGap becomes 30 seconds.
+- Rider A's race 1 eGap becomes 120 seconds.
 - Rider B is now the fastest Cat D rider in race 1, so their race 1 eGap becomes 0s.
 
 ### Team classification
