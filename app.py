@@ -262,6 +262,15 @@ with main_col:
                 )
                 df['e_gap'] = pd.to_timedelta(time_str, errors='coerce')
 
+        # Numeric total time for the eGap tie-break (the text sorts "01:11:46" before "55:30")
+        if 'total_time' in df.columns:
+            time_str = df['total_time'].astype(str).apply(
+                lambda x: '00:' + x if x.count(':') == 1
+                else ('00:00:' + x if x.count(':') == 0
+                else x)
+            )
+            df['temp_total_time'] = pd.to_timedelta(time_str, errors='coerce')
+
     if "Round" in selected_sheet:
         # If a time is only "MM:SS.ms" (1 colon), prepend "00:" so pandas reads it as "HH:MM:SS.ms"
         time_str = df['time'+selected_sheet[-1]].astype(str).apply(
@@ -279,6 +288,8 @@ with main_col:
         sort_cols = ['temp_sort_time' if c == 'total_time' else c for c in sort_cols]
     elif 'Round' in selected_sheet and 'temp_sort_time' in df.columns:
         sort_cols = ['temp_sort_time' if 'time' in c else c for c in sort_cols]
+    elif 'total_time' in sort_cols and 'temp_total_time' in df.columns:
+        sort_cols = ['temp_total_time' if c == 'total_time' else c for c in sort_cols]
 
     # 3. Sort and reset index
     df = df.sort_values(by=sort_cols, ascending=sort_orders).reset_index(drop=True)
@@ -354,7 +365,9 @@ with main_col:
         
         # Re-sort strictly by time if 'All' is selected for either filter
         # if selected_pen == 'All' or selected_cat == 'All':
-        if 'temp_sort_time' in filtered_df.columns:
+        if selected_sheet == "e_gap" and 'temp_total_time' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values(by=['e_gap', 'temp_total_time'], ascending=[True, True])
+        elif 'temp_sort_time' in filtered_df.columns:
             if selected_sheet == "GC":
                 filtered_df = filtered_df.sort_values(by=['races','temp_sort_time'], ascending=[False,True])
             if selected_sheet == "Team GC":
@@ -412,6 +425,8 @@ with main_col:
         df = df.drop(columns=['temp_sort_time'])
     if 'temp_sort_time' in filtered_df.columns:
         filtered_df = filtered_df.drop(columns=['temp_sort_time'])
+    df = df.drop(columns=['temp_total_time'], errors='ignore')
+    filtered_df = filtered_df.drop(columns=['temp_total_time'], errors='ignore')
 
     # Metric Logic
     if not filtered_df.empty:
