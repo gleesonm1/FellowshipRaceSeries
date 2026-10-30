@@ -89,10 +89,10 @@ sprint_list = {
 }
 #### LIST OF KQOM SEGMENTS ####
 KQOM_list = {
-    'Sgurr Summit South': (
+    'Richmond Libby Hill': (
     points
 ),
-    'Sgurr Summit North': (
+    'Richmond 23rd Street': (
     points
 ),
     'Montmartre KOM': (
