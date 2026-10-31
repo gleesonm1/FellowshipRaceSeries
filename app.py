@@ -123,49 +123,40 @@ def render_podium(df):
     p2_name, p2_team = get_rider(1)
     p3_name, p3_team = get_rider(2)
 
-    # textwrap.dedent removes leading whitespace/indentation so Streamlit doesn't render it as a code block
+    # Sizes use clamp(min, vw-based, max) so the podium shrinks to fit a phone and caps out on desktop.
+    # min-width: 0 lets the flex columns shrink below their text width; names wrap to at most 2 lines.
+    def step(name, team, name_style, block_bg, block_height, label, label_color, label_size, shadow, max_width):
+        return f"""
+        <div style="flex: 1 1 0; min-width: 0; max-width: {max_width}px; text-align: center;">
+            <div style="{name_style} margin-bottom: 4px; line-height: 1.2; overflow-wrap: anywhere;
+                        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="{name}">
+                {name}
+            </div>
+            <div style="font-size: clamp(0.65em, 2.6vw, 0.8em); color: #888; margin-bottom: 8px; height: 1.2em;
+                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{team}">
+                {team}
+            </div>
+            <div style="background: {block_bg}; height: {block_height}; border-radius: 8px 8px 0 0; display: flex;
+                        align-items: center; justify-content: center; color: {label_color}; font-weight: bold;
+                        font-size: {label_size}; box-shadow: {shadow};">
+                {label}
+            </div>
+        </div>"""
+
+    second = step(p2_name, p2_team, "font-weight: 600; font-size: clamp(0.75em, 3.2vw, 0.95em); color: #E0E0E0;",
+                  "linear-gradient(180deg, #C0C0C0 0%, #7F8C8D 100%)", "clamp(55px, 16vw, 80px)",
+                  "2nd", "white", "clamp(1em, 4.5vw, 1.4em)", "0 4px 10px rgba(0,0,0,0.3)", 220)
+    first = step(p1_name, p1_team, "font-weight: 700; font-size: clamp(0.8em, 3.6vw, 1.1em); color: #FFD700;",
+                 "linear-gradient(180deg, #FFD700 0%, #D4AF37 100%)", "clamp(80px, 23vw, 115px)",
+                 "1st", "#111", "clamp(1.1em, 5vw, 1.6em)", "0 6px 14px rgba(212,175,55,0.4)", 240)
+    third = step(p3_name, p3_team, "font-weight: 600; font-size: clamp(0.75em, 3.2vw, 0.95em); color: #E0E0E0;",
+                 "linear-gradient(180deg, #CD7F32 0%, #8B4513 100%)", "clamp(40px, 12vw, 60px)",
+                 "3rd", "white", "clamp(0.95em, 4.2vw, 1.3em)", "0 4px 10px rgba(0,0,0,0.3)", 220)
+
     podium_html = f"""
-    <div style="display: flex; align-items: flex-end; justify-content: center; gap: 16px; margin: 20px 0 30px 0;">
-        
-        <!-- 2nd Place (Silver) -->
-        <div style="flex: 1; max-width: 220px; text-align: center;">
-            <div style="font-weight: 600; font-size: 0.95em; color: #E0E0E0; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{p2_name}">
-                {p2_name}
-            </div>
-            <div style="font-size: 0.8em; color: #888; margin-bottom: 8px; height: 1.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{p2_team}">
-                {p2_team}
-            </div>
-            <div style="background: linear-gradient(180deg, #C0C0C0 0%, #7F8C8D 100%); height: 80px; border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.4em; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-                2nd
-            </div>
-        </div>
-
-        <!-- 1st Place (Gold) -->
-        <div style="flex: 1; max-width: 240px; text-align: center;">
-            <div style="font-size: 1.1em; font-weight: 700; color: #FFD700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{p1_name}">
-                {p1_name}
-            </div>
-            <div style="font-size: 0.8em; color: #AAA; margin-bottom: 8px; height: 1.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{p1_team}">
-                {p1_team}
-            </div>
-            <div style="background: linear-gradient(180deg, #FFD700 0%, #D4AF37 100%); height: 115px; border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; color: #111; font-weight: bold; font-size: 1.6em; box-shadow: 0 6px 14px rgba(212,175,55,0.4);">
-                1st
-            </div>
-        </div>
-
-        <!-- 3rd Place (Bronze) -->
-        <div style="flex: 1; max-width: 220px; text-align: center;">
-            <div style="font-weight: 600; font-size: 0.95em; color: #E0E0E0; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{p3_name}">
-                {p3_name}
-            </div>
-            <div style="font-size: 0.8em; color: #888; margin-bottom: 8px; height: 1.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{p3_team}">
-                {p3_team}
-            </div>
-            <div style="background: linear-gradient(180deg, #CD7F32 0%, #8B4513 100%); height: 60px; border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.3em; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-                3rd
-            </div>
-        </div>
-
+    <div style="display: flex; align-items: flex-end; justify-content: center; gap: clamp(6px, 2vw, 16px);
+                width: 100%; box-sizing: border-box; margin: 20px 0 30px 0;">
+        {second}{first}{third}
     </div>
     """
 
@@ -236,6 +227,13 @@ with main_col:
 
     # --- 4. DATA PROCESSING ---
     df = all_sheets[selected_sheet]
+
+    # Sheets for rounds that haven't been raced yet are empty (no columns)
+    if df.empty:
+        st.title(f"🏆 {selected_event}: {selected_sheet}")
+        st.info("No results yet for this round - check back once it has been raced.")
+        st.stop()
+
     if selected_sheet != "Team GC":
         df = clean_data(df)
 
@@ -476,11 +474,17 @@ with main_col:
     if 'e_gap' in filtered_df.columns and pd.api.types.is_timedelta64_dtype(filtered_df['e_gap']):
         filtered_df['e_gap'] = filtered_df['e_gap'].apply(format_egap)
 
+    # Move the less important rider details to the right-hand end of the table
+    end_cols = [c for c in ['zwift_id', 'category', 'age', 'gender'] if c in filtered_df.columns]
+    filtered_df = filtered_df[[c for c in filtered_df.columns if c not in end_cols] + end_cols]
+
     filtered_df.index = range(1, len(filtered_df) + 1)
 
+    # height="content" shows every row instead of a scrollable 10-row box
     st.dataframe(
         filtered_df.style.apply(highlight_podium, axis=1),
-        use_container_width=True,
+        width="stretch",
+        height="content",
         hide_index=False,
         column_config=column_main_config
     )
