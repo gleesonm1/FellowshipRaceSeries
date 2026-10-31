@@ -32,7 +32,8 @@ eGap is the primary ranking for this series. Your eGap in a race is your time ga
 
 The series mixes a TT, a mass-start "Epic" race and three races with staggered starts for different categories, so please read the rules below carefully.
 
-- **Everyone in your category counts.** eGap is calculated against every rider in your category in that event/race, whether or not they are riding the full series. Watch out for anyone sneaking up the road. The only exception is the stage 4 TT, where the eGap will be calculated against the times of all riders in your category regardless of which event they joined.
+- **Everyone in your category counts.** eGap is calculated against every rider in your category in that event/race, whether or not they are riding the full series. Watch out for anyone sneaking up the road. The only exception is the stage 4 TT, where the eGap will be calculated against the times of all riders in your category regardless of which event they joined. 
+- Any rider that: (i) wins a race; (ii) upgrades as a result of that ride (i.e., moves above the ZRS category limit); and (iii) does not race another stage of the championships will be removed from the eGap calculations. This is so that riders upgrading do not influence the final eGap standings (see information below on how riders upgrading throughout the series are handled).
 - **Sandbagging.** If you believe a rider deliberately raced a category too low and won by a considerable margin, contact the race committee (Matt and Chase). We may manually remove their influence on the calculated eGap.
 
 #### Category classifications
@@ -59,3 +60,8 @@ From 1st to 20th quickest times for each segments points will be awarded using t
 
 [30, 25, 22, 20, 18, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
             """)
+
+        with st.expander("**Rider DQs and promotions**", expanded=False):
+            st.markdown("""
+Clau Pirata -- Deliberate sandbagging of ZRS prior to event.
+                        """)
