@@ -315,9 +315,7 @@ if args.mode == "all":
             for i in race_id:
                 df = run_fetch(fetch_race_data, i)
                 if "zwift_id" in df.columns:
-                    for r in riders_removed:
-                        if r in df['zwift_id']:
-                            df = df[df['zwift_id'] != r]
+                    df = df[~df['zwift_id'].isin(riders_removed)]
                 
                 if len(df)>0:
                     df = df[columns]
@@ -603,9 +601,7 @@ elif args.mode == "add":
         # load new race
         df = run_fetch(fetch_race_data, i)
         if 'zwift_id' in df.columns:
-            for r in riders_removed:
-                if r in df['zwift_id']:
-                    df = df[df['zwift_id'] != r]
+            df = df[~df['zwift_id'].isin(riders_removed)]
         
         df = df[columns]
         df['race_id'] = np.zeros(len(df)) + i
