@@ -378,7 +378,7 @@ with main_col:
             elif selected_sheet == "Team GC":
                 filtered_df = filtered_df.sort_values(by=['racers','total_time'], ascending=[False,True])
         elif 'e_gap' in filtered_df.columns:
-            filtered_df = filtered_df.sort_values(by=['e_gap', 'total_time'], ascending=[True,True])
+            filtered_df = filtered_df.sort_values(by=['races completed', 'e_gap', 'total_time'], ascending=[False,True,True])
             
         filtered_df = filtered_df.reset_index(drop=True)
     else:
