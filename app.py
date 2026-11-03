@@ -364,7 +364,7 @@ with main_col:
         # Re-sort strictly by time if 'All' is selected for either filter
         # if selected_pen == 'All' or selected_cat == 'All':
         if selected_sheet == "e_gap" and 'temp_total_time' in filtered_df.columns:
-            filtered_df = filtered_df.sort_values(by=['e_gap', 'temp_total_time'], ascending=[True, True])
+            filtered_df = filtered_df.sort_values(by=['races completed', 'e_gap', 'temp_total_time'], ascending=[False, True, True])
         elif 'temp_sort_time' in filtered_df.columns:
             if selected_sheet == "GC":
                 filtered_df = filtered_df.sort_values(by=['races','temp_sort_time'], ascending=[False,True])
