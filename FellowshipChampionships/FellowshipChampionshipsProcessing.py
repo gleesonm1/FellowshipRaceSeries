@@ -194,7 +194,7 @@ def calc_egap(e_gap_raw, gc):
 
         # (iii) missed rounds take the largest eGap in the rider's pen, or the LOWER_PEN_EGAP values, whichever is higher.
         fill = egap.groupby('pen')[col].transform('max').clip(lower=LOWER_PEN_EGAP).fillna(LOWER_PEN_EGAP)
-        egap[col] = egap[col].fillna(fill)
+        egap[col] = egap[col].fillna(0.0)
 
     egap['e_gap'] = egap[egap_cols].sum(axis=1)
     egap = egap.reset_index(names='zwift_id')
