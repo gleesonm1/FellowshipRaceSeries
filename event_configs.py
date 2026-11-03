@@ -11,7 +11,7 @@ EVENT_CONFIG = {
             (['races', 'total_time'], [False, True]) if sheet == "GC" else
             (['racers', 'total_time'], [False, True]) if sheet == "Team GC" else
             (['pen', f"time{sheet[-1]}"], [True, True]) if "Round" in sheet else
-            (['races', 'e_gap', 'total_time'], [False, True,True]) if sheet == "e_gap" else
+            (['races completed', 'e_gap', 'total_time'], [False, True,True]) if sheet == "e_gap" else
             (['pen', 'Total Points'], [True, False])
     }
 }
