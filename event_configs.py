@@ -8,10 +8,10 @@ EVENT_CONFIG = {
         "default_sheet": "e_gap",
         # "poster": "FellowshipChampionships/ChampDetails.jpg",
         "sorting": lambda sheet:
-            (['races', 'total_time'], [True, True]) if sheet == "GC" else
+            (['races', 'total_time'], [False, True]) if sheet == "GC" else
             (['racers', 'total_time'], [False, True]) if sheet == "Team GC" else
             (['pen', f"time{sheet[-1]}"], [True, True]) if "Round" in sheet else
-            (['e_gap', 'total_time'], [True,True]) if sheet == "e_gap" else
+            (['races', 'e_gap', 'total_time'], [False, True,True]) if sheet == "e_gap" else
             (['pen', 'Total Points'], [True, False])
     }
 }
