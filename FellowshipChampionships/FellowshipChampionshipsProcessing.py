@@ -139,7 +139,7 @@ def calc_egap(e_gap_raw, gc):
     i   - rides in a lower pen than the series pen are removed before eGaps are calculated, so they
           never set the winning time (this includes a lower pen ridden alongside a higher one in the same round)
     ii  - a round where the rider only has lower-pen rides scores LOWER_PEN_EGAP
-    iii - a round with results that the rider missed scores the largest eGap in their pen for that round
+    iii - a round with results that the rider missed is left blank (NaN) and adds 0 to their total eGap
     """
     rounds = {}
     for key, df in e_gap_raw.items():
@@ -192,10 +192,11 @@ def calc_egap(e_gap_raw, gc):
         # rode this round (in any pen) - counted before missed rounds are filled in
         egap['races completed'] += egap[col].notna().astype(int)
 
-        # (iii) missed rounds take the largest eGap in the rider's pen, or the LOWER_PEN_EGAP values, whichever is higher.
-        fill = egap.groupby('pen')[col].transform('max').clip(lower=LOWER_PEN_EGAP).fillna(LOWER_PEN_EGAP)
-        egap[col] = egap[col].fillna(0.0)
+        # (iii) missed rounds are left as NaN (blank in the table) and add 0 to the total eGap.
+        # Previous rule - missed rounds took the largest eGap in the rider's pen, or LOWER_PEN_EGAP, whichever is higher:
+        # egap[col] = egap[col].fillna(egap.groupby('pen')[col].transform('max').clip(lower=LOWER_PEN_EGAP).fillna(LOWER_PEN_EGAP))
 
+    # sum skips NaN, so missed rounds count as 0
     egap['e_gap'] = egap[egap_cols].sum(axis=1)
     egap = egap.reset_index(names='zwift_id')
 

@@ -474,6 +474,10 @@ with main_col:
     if 'e_gap' in filtered_df.columns and pd.api.types.is_timedelta64_dtype(filtered_df['e_gap']):
         filtered_df['e_gap'] = filtered_df['e_gap'].apply(format_egap)
 
+    # Missed rounds are NaN in the per-round eGap columns - show them as blank rather than "None"
+    for c in [c for c in filtered_df.columns if c.startswith('e_gap') and c[5:].isdigit()]:
+        filtered_df[c] = filtered_df[c].astype(object).where(filtered_df[c].notna(), '')
+
     # Move the less important rider details to the right-hand end of the table
     end_cols = [c for c in ['zwift_id', 'category', 'age', 'gender'] if c in filtered_df.columns]
     filtered_df = filtered_df[[c for c in filtered_df.columns if c not in end_cols] + end_cols]
