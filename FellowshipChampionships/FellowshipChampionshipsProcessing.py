@@ -232,6 +232,54 @@ def assign_points(df, segment, points_scale):
 
     return df
 
+def segment_tables(gc, race_sprint):
+    """Builds the Sprint and KQOM tables from the prime data of each race.
+
+    Segments are scored separately for each round, so the same segment ridden in Round 1 and Round 3
+    becomes two columns ("Champion's Sprint Round 1", "Champion's Sprint Round 3"). Within a round each
+    rider's best time across all races in that round counts. TT rounds are not scored.
+    """
+    race_round = {race_id: key for key, ids in round.items() for race_id in ids}
+
+    rows = []
+    for race_id, race in race_sprint.items():
+        key = race_round.get(race_id)
+        if key is None or race_type.get(key) == "TT":
+            continue
+        for rider in race:
+            for k in rider['sprints']:
+                if k['msec']:  # 0 / missing means no time through the segment
+                    rows.append({'zwift_id': rider['zwift_id'], 'segment': k['name'], 'round': key,
+                                 'column': f"{k['name']} {key}", 'msec': float(k['msec'])})
+    times = pd.DataFrame(rows, columns=['zwift_id', 'segment', 'round', 'column', 'msec'])
+
+    # columns ordered by round, then by the order the segments were ridden
+    times['round_order'] = times['round'].map({key: n for n, key in enumerate(round)})
+    seg_cols = times.sort_values('round_order', kind='stable').drop_duplicates('column')[['segment', 'column']]
+
+    # best time per rider per segment per round
+    if times.empty:
+        best = pd.DataFrame(index=pd.Index([], dtype=gc['zwift_id'].dtype))
+    else:
+        best = times.groupby(['zwift_id', 'column'])['msec'].min().unstack()
+
+    tables = []
+    for seg_list, label in [(sprint_list, 'Sprint'), (KQOM_list, 'KOM')]:
+        cols = seg_cols[seg_cols['segment'].isin(seg_list) | seg_cols['segment'].str.contains(label)]
+
+        df = gc[["zwift_id", "pen", "category", "name", "team_name", "races"]].copy()
+        df = df.merge(best.reindex(columns=cols['column']), left_on='zwift_id', right_index=True, how='left')
+
+        for segment, col in zip(cols['segment'], cols['column']):
+            df = assign_points(df, col, seg_list.get(segment, points))
+
+        df['Total Points'] = df.loc[:, df.columns.str.contains("points")].sum(axis=1)
+        df = df[list(df.columns[:5]) + ["Total Points"] + list(df.columns[5:-1])]
+        df = df.sort_values(['pen', 'Total Points'], ascending=[True, False])
+        tables.append(df)
+
+    return tables
+
 # Function to convert seconds to hh:mm:ss
 def format_seconds(total_seconds):
     hours = int(total_seconds // 3600)
@@ -501,8 +549,6 @@ if args.mode == "all":
         team_gc['GC'] = pd.DataFrame()
 
     # #### ISOLATE THE SPRINT AND KOMS FOUND IN THE RACES ####
-    sprint = gc[["zwift_id", "pen", "category", "name", "team_name", "races"]].copy()
-    KQOM = gc[["zwift_id", "pen", "category", "name", "team_name", "races"]].copy()
 
     names = []
     race_sprint = {} 
@@ -522,61 +568,8 @@ if args.mode == "all":
     with open('prime_raw.pkl', 'wb') as f:
         pickle.dump([names, race_sprint], f)
 
-    sprints = [x for x in names if x in sprint_list or 'Sprint' in x]
-    kqoms = [x for x in names if x in KQOM_list or 'KOM' in x]
-    for x in names:
-        if "Sprint" in x:
-            sprint_list.update({x: points})
-        if "KOM" in x:
-            KQOM_list.update({x: points})
-    sprint[sprints] = 0.0
-    KQOM[kqoms] = 0.0
-
-    # sprint = sprint.loc[sprint['races'] == np.nanmax(sprint['races'])].reset_index(drop = True)
-    # KQOM = KQOM.loc[(KQOM['races'] == np.nanmax(KQOM['races']))].reset_index(drop = True)
-
-    for race_key, race in race_sprint.items():
-        for i in range(len(race)):
-            rider = race[i]['zwift_id']
-            for k in race[i]['sprints']:
-                if k['name'] in sprint.columns:
-                    if len(sprint.loc[sprint['zwift_id'] == rider, k['name']]) > 0.0:
-                        if sprint.loc[sprint['zwift_id'] == rider, k['name']].values[0] == 0.0:
-                            sprint.loc[sprint['zwift_id'] == rider, k['name']] = k['msec']
-                        else:
-                            sprint.loc[sprint['zwift_id'] == rider, k['name']] = np.nanmin([sprint.loc[sprint['zwift_id'] == rider, k['name']].values[0],k['msec']])      
-                if k['name'] in KQOM.columns:
-                    if len(KQOM.loc[KQOM['zwift_id'] == rider, k['name']]) > 0.0:
-                        if KQOM.loc[KQOM['zwift_id'] == rider, k['name']].values[0] == 0.0:
-                            KQOM.loc[KQOM['zwift_id'] == rider, k['name']] = k['msec']
-                        else:
-                            KQOM.loc[KQOM['zwift_id'] == rider, k['name']] = np.nanmin([KQOM.loc[KQOM['zwift_id'] == rider, k['name']].values[0],k['msec']])
-
-    sprint = sprint.replace(0.0, np.nan)
-    KQOM = KQOM.replace(0.0, np.nan)
-
-    #### Create final sprint and KQOM tables for export ####
-    for s in sprint_list.keys():
-        if s in sprint:
-            sprint = assign_points(sprint, s, sprint_list[s])
-
-    if "Total Points" in sprint.columns:
-        sprint = sprint.drop(columns="Total Points")
-
-    sprint['Total Points'] = sprint.loc[:,sprint.columns.str.contains("points")].sum(axis = 1)
-    sprint = sprint[list(sprint.columns[:5]) + ["Total Points"] + list(sprint.columns[5:-1])]
-    sprint = sprint.sort_values(['pen', 'Total Points'], ascending = [True,False])
-
-    for k in KQOM_list.keys():
-        if k in KQOM:
-            KQOM = assign_points(KQOM, k, KQOM_list[k])
-
-    if "Total Points" in KQOM.columns:
-        KQOM = KQOM.drop(columns="Total Points")
-
-    KQOM['Total Points'] = KQOM.loc[:,KQOM.columns.str.contains("points")].sum(axis = 1)
-    KQOM = KQOM[list(KQOM.columns[:5]) + ["Total Points"] + list(KQOM.columns[5:-1])]
-    KQOM = KQOM.sort_values(['pen', 'Total Points'], ascending = [True,False])
+    #### Create final sprint and KQOM tables for export (each segment scored per round) ####
+    sprint, KQOM = segment_tables(gc, race_sprint)
 
 elif args.mode == "add":
     race_id = args.races
@@ -789,8 +782,6 @@ elif args.mode == "add":
         team_gc['GC'] = pd.DataFrame()
 
     # #### ISOLATE THE SPRINT AND KOMS FOUND IN THE RACES ####
-    sprint = gc[["zwift_id", "pen", "category", "name", "team_name", "races"]].copy()
-    KQOM = gc[["zwift_id", "pen", "category", "name", "team_name", "races"]].copy()
 
     with open('prime_raw.pkl', 'rb') as f:
         names, race_sprint = pickle.load(f)
@@ -813,61 +804,8 @@ elif args.mode == "add":
     with open('prime_raw.pkl', 'wb') as f:
          pickle.dump([names, race_sprint], f)
 
-    sprints = [x for x in names if x in sprint_list or 'Sprint' in x]
-    kqoms = [x for x in names if x in KQOM_list or 'KOM' in x]
-    for x in names:
-        if "Sprint" in x:
-            sprint_list.update({x: [20,18,16,14,12,10,9,8,7,6,5,4,3,2,1]})
-        if "KOM" in x:
-            KQOM_list.update({x: [20,18,16,14,12,10,9,8,7,6,5,4,3,2,1]})
-    sprint[sprints] = 0.0
-    KQOM[kqoms] = 0.0
-
-    sprint = sprint.loc[sprint['races'] == np.nanmax(sprint['races'])].reset_index(drop = True)
-    KQOM = KQOM.loc[(KQOM['races'] == np.nanmax(KQOM['races']))].reset_index(drop = True)
-
-    for race_key, race in race_sprint.items():
-        for i in range(len(race)):
-            rider = race[i]['zwift_id']
-            for k in race[i]['sprints']:
-                if k['name'] in sprint.columns:
-                    if len(sprint.loc[sprint['zwift_id'] == rider, k['name']]) > 0.0:
-                        if sprint.loc[sprint['zwift_id'] == rider, k['name']].values[0] == 0.0:
-                            sprint.loc[sprint['zwift_id'] == rider, k['name']] = k['msec']
-                        else:
-                            sprint.loc[sprint['zwift_id'] == rider, k['name']] = np.nanmin([sprint.loc[sprint['zwift_id'] == rider, k['name']].values[0],k['msec']])      
-                if k['name'] in KQOM.columns:
-                    if len(KQOM.loc[KQOM['zwift_id'] == rider, k['name']]) > 0.0:
-                        if KQOM.loc[KQOM['zwift_id'] == rider, k['name']].values[0] == 0.0:
-                            KQOM.loc[KQOM['zwift_id'] == rider, k['name']] = k['msec']
-                        else:
-                            KQOM.loc[KQOM['zwift_id'] == rider, k['name']] = np.nanmin([KQOM.loc[KQOM['zwift_id'] == rider, k['name']].values[0],k['msec']])
-
-    sprint = sprint.replace(0.0, np.nan)
-    KQOM = KQOM.replace(0.0, np.nan)
-
-    #### Create final sprint and KQOM tables for export ####
-    for s in sprint_list.keys():
-        if s in sprint:
-            sprint = assign_points(sprint, s, sprint_list[s])
-
-    if "Total Points" in sprint.columns:
-        sprint = sprint.drop(columns="Total Points")
-
-    sprint['Total Points'] = sprint.loc[:,sprint.columns.str.contains("points")].sum(axis = 1)
-    sprint = sprint[list(sprint.columns[:5]) + ["Total Points"] + list(sprint.columns[5:-1])]
-    sprint = sprint.sort_values(['pen', 'Total Points'], ascending = [True,False])
-
-    for k in KQOM_list.keys():
-        if k in KQOM:
-            KQOM = assign_points(KQOM, k, KQOM_list[k])
-
-    if "Total Points" in KQOM.columns:
-        KQOM = KQOM.drop(columns="Total Points")
-
-    KQOM['Total Points'] = KQOM.loc[:,KQOM.columns.str.contains("points")].sum(axis = 1)
-    KQOM = KQOM[list(KQOM.columns[:5]) + ["Total Points"] + list(KQOM.columns[5:-1])]
-    KQOM = KQOM.sort_values(['pen', 'Total Points'], ascending = [True,False])
+    #### Create final sprint and KQOM tables for export (each segment scored per round) ####
+    sprint, KQOM = segment_tables(gc, race_sprint)
 
 final = {}
 final['GC'] = out['GC']
