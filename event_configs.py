@@ -64,4 +64,5 @@ From 1st to 20th quickest times for each segments points will be awarded using t
         with st.expander("**Rider DQs and promotions**", expanded=False):
             st.markdown("""
 Clau Pirata -- Deliberate sandbagging of ZRS prior to event.
+T. Bertoncelj -- Large weight changes.
                         """)

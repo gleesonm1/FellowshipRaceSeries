@@ -36,7 +36,7 @@ zp_session = ZP()
 zp_session.login()
 
 ## highlight rider zwift_ids to be manually removed prior to any calculations
-riders_removed = [8338237]
+riders_removed = [8338237, 7836021]
 
 # set up information
 round = {'Round 1': [5752680,5752682,5752683,
