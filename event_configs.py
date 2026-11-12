@@ -63,7 +63,37 @@ From 1st to 20th quickest times for each segments points will be awarded using t
 
         with st.expander("**Rider DQs and promotions**", expanded=False):
             st.markdown("""
-Clau Pirata -- Deliberate sandbagging of ZRS prior to event.
+Clau Pirata -- Deliberate sandbagging of ZRS prior to event.\n
 
-T. Bertoncelj -- Large weight changes.
+T. Bertoncelj -- Large weight changes.\n
+
+Etienne Mille -- promoted.\n
+
+Nick Espinoza -- promoted.\n
+
+Takaya Ueda -- promoted.\n
+
+Laurent ABAD -- promoted.\n
+
+Bald Eagles -- promoted.\n
+
+Andy Mackay -- promoted.\n
+
+D. Anajwala -- promoted.\n
+
+S. Tull -- promoted.\n
+
+M. Bishop -- promoted.\n
+
+F. Haston -- promoted.\n
+
+M. Rosser -- promoted.\n
+
+A. Gross -- promoted.\n
+
+D. Thorpe -- promoted.\n
+
+T.W. -- promoted.\n
+
+R. Peggie -- promoted.
                         """)
