@@ -103,6 +103,9 @@ KQOM_list = {
 ),
     'Montmartre KOM': (
     points
+),
+    'The Grade': (
+    points
 )
     
 }
